@@ -2,8 +2,7 @@ import streamlit as st
 import pandas as pd
 import re
 
-# Placeholder poster and platform icons (PNG format)
-PLACEHOLDER_IMAGE = "https://via.placeholder.com/200x300?text=No+Image"
+# Optional platform icons
 POPCORN_ICON = "https://upload.wikimedia.org/wikipedia/commons/c/c8/Popcorn_icon.png"
 NETFLIX_LOGO = "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Netflix_Logomark.png/640px-Netflix_Logomark.png"
 PRIME_LOGO = "https://upload.wikimedia.org/wikipedia/commons/2/27/Amazon_Prime_logo.png"
@@ -33,32 +32,53 @@ def load_movies_meta():
 stream_df = load_streaming_data()
 meta = load_movies_meta()
 
-# Merge metadata with streaming titles
 combined = stream_df.merge(
     meta[["clean_title", "genre_list"]],
     how="left",
     left_on="TitleClean", right_on="clean_title"
 )
-
-# Replace missing genres with empty list
 combined["genre_list"] = combined["genre_list"].apply(lambda x: x if isinstance(x, list) else [])
 
 # -----------------------------
 # Streamlit UI
 # -----------------------------
-st.set_page_config(page_title="Movie Recommender", layout="wide")
-st.markdown("# 🎥 Streaming-based Movie Recommender")
+st.set_page_config(page_title="Movie Recommender", layout="centered")
 
-# Year filter
+# Custom CSS
+st.markdown("""
+    <style>
+    .main-title {
+        font-family: 'Poppins', sans-serif;
+        font-size: 32px;
+        font-weight: bold;
+        text-align: center;
+        margin-bottom: 32px;
+    }
+    .recommend-button div.stButton > button {
+        background-color: #5b21b6;
+        color: white;
+        border-radius: 10px;
+        font-weight: 600;
+        padding: 12px 24px;
+        transition: 0.3s;
+    }
+    .recommend-button div.stButton > button:hover {
+        background-color: #6d28d9;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+# Title
+st.markdown('<div class="main-title">🎬 Streaming-based Movie Recommender</div>', unsafe_allow_html=True)
+
+# Filters
 min_year = int(combined["Year"].min())
 max_year = int(combined["Year"].max())
 year_selected = st.slider("Select minimum release year:", min_year, max_year, 2000)
 
-# Platform filter
 platform_options = ["All", "Netflix Only", "Prime Video Only"]
 selected_platform = st.selectbox("Filter by Platform:", platform_options)
 
-# Genre filter
 all_genres = sorted({g for sub in combined["genre_list"] for g in sub})
 selected_genres = st.multiselect("Filter by genre(s):", all_genres)
 
@@ -79,6 +99,7 @@ else:
     search_title = st.selectbox("Choose a movie:", title_choices)
     top_n = st.slider("Number of recommendations:", 1, 10, 5)
 
+    st.markdown('<div class="recommend-button">', unsafe_allow_html=True)
     if st.button("🚀 Recommend"):
         st.toast("🎉 Generating recommendations...")
 
@@ -99,17 +120,15 @@ else:
             st.subheader("🍿 Top Recommendations")
             for i, title in enumerate(recommendations, 1):
                 row = df[df["TitleClean"] == title].iloc[0]
-                col1, col2, col3 = st.columns([1, 4, 1])
-
+                col1, col2 = st.columns([1, 6])
                 with col1:
-                    st.image(PLACEHOLDER_IMAGE, width=80)
-
+                    st.image(POPCORN_ICON, width=30)
                 with col2:
                     st.markdown(f"**{i}. {title}**")
-
-                with col3:
-                    st.image(POPCORN_ICON, width=30)
+                    platform_icons = ""
                     if int(row.get("Netflix", 0)) == 1:
-                        st.image(NETFLIX_LOGO, width=50)
+                        platform_icons += f'<img src="{NETFLIX_LOGO}" width="50"/> '
                     if int(row.get("Prime.Video", 0)) == 1:
-                        st.image(PRIME_LOGO, width=50)
+                        platform_icons += f'<img src="{PRIME_LOGO}" width="50"/>'
+                    st.markdown(platform_icons, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
