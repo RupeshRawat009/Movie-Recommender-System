@@ -2,14 +2,18 @@ import streamlit as st
 import pandas as pd
 import re
 
-# Optional platform icons
+# Load external CSS
+with open("app/style.css") as f:
+    st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+
+
+# Platform icons
 POPCORN_ICON = "https://upload.wikimedia.org/wikipedia/commons/c/c8/Popcorn_icon.png"
 NETFLIX_LOGO = "https://upload.wikimedia.org/wikipedia/commons/thumb/e/ea/Netflix_Logomark.png/640px-Netflix_Logomark.png"
 PRIME_LOGO = "https://upload.wikimedia.org/wikipedia/commons/2/27/Amazon_Prime_logo.png"
 
-# -----------------------------
-# Load Streaming Data
-# -----------------------------
+st.set_page_config(page_title="Movie Recommender", layout="centered")
+
 @st.cache_data
 def load_streaming_data():
     df = pd.read_csv("data/streaming_availability.csv")
@@ -17,15 +21,12 @@ def load_streaming_data():
     df["TitleClean"] = df["Title"].astype(str).str.strip()
     return df
 
-# -----------------------------
-# Load Movie Metadata
-# -----------------------------
 @st.cache_data
 def load_movies_meta():
     meta = pd.read_csv("data/movies.dat", sep="::", engine="python",
                        encoding="ISO-8859-1",
                        names=["movieId", "title", "genres"])
-    meta["clean_title"] = meta["title"].apply(lambda x: re.sub(r"\s\(\d{4}\)$", "", x))
+    meta["clean_title"] = meta["title"].apply(lambda x: re.sub(r"\\s\\(\\d{4}\\)$", "", x))
     meta["genre_list"] = meta["genres"].apply(lambda x: x.split("|"))
     return meta
 
@@ -39,39 +40,9 @@ combined = stream_df.merge(
 )
 combined["genre_list"] = combined["genre_list"].apply(lambda x: x if isinstance(x, list) else [])
 
-# -----------------------------
-# Streamlit UI
-# -----------------------------
-st.set_page_config(page_title="Movie Recommender", layout="centered")
+st.markdown('<div class="main-title">🍿 Streaming Movie Recommender</div>', unsafe_allow_html=True)
+st.markdown('<div class="glass-card">', unsafe_allow_html=True)
 
-# Custom CSS
-st.markdown("""
-    <style>
-    .main-title {
-        font-family: 'Poppins', sans-serif;
-        font-size: 32px;
-        font-weight: bold;
-        text-align: center;
-        margin-bottom: 32px;
-    }
-    .recommend-button div.stButton > button {
-        background-color: #5b21b6;
-        color: white;
-        border-radius: 10px;
-        font-weight: 600;
-        padding: 12px 24px;
-        transition: 0.3s;
-    }
-    .recommend-button div.stButton > button:hover {
-        background-color: #6d28d9;
-    }
-    </style>
-""", unsafe_allow_html=True)
-
-# Title
-st.markdown('<div class="main-title">🎬 Streaming-based Movie Recommender</div>', unsafe_allow_html=True)
-
-# Filters
 min_year = int(combined["Year"].min())
 max_year = int(combined["Year"].max())
 year_selected = st.slider("Select minimum release year:", min_year, max_year, 2000)
@@ -82,7 +53,6 @@ selected_platform = st.selectbox("Filter by Platform:", platform_options)
 all_genres = sorted({g for sub in combined["genre_list"] for g in sub})
 selected_genres = st.multiselect("Filter by genre(s):", all_genres)
 
-# Apply filters
 df = combined[combined["Year"] >= year_selected]
 if selected_platform == "Netflix Only":
     df = df[df["Netflix"] == 1]
@@ -132,3 +102,5 @@ else:
                         platform_icons += f'<img src="{PRIME_LOGO}" width="50"/>'
                     st.markdown(platform_icons, unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
+
+st.markdown('</div>', unsafe_allow_html=True)
